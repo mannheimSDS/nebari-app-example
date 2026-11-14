@@ -2,8 +2,6 @@
 
 A small web app for the SDS cluster at https://sdscluster.uni-mannheim.de. It uses [FastHTML](https://fastht.ml/), keeps its data in SQLite, and runs with [uv](https://docs.astral.sh/uv/). It shows a table of quotes that you can sort, shuffle and filter. The web page only reads the database; nobody on the internet can write to it.
 
-Running example: https://sdscluster.uni-mannheim.de/user/mrobertson/nebari-app-example/
-
 Use it as a template. Copy it, check that it deploys, then change `main.py` into your own app.
 
 ## Deploy it on the cluster
