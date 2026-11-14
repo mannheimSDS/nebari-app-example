@@ -1,6 +1,6 @@
 # Nebari app example
 
-A small web app for the SDS cluster at https://sdscluster.uni-mannheim.de. It uses [FastHTML](https://fastht.ml/), keeps its data in SQLite, and runs with [uv](https://docs.astral.sh/uv/). It shows a table of quotes that you can sort, shuffle and filter, and a form that adds rows to the database.
+A small web app for the SDS cluster at https://sdscluster.uni-mannheim.de. It uses [FastHTML](https://fastht.ml/), keeps its data in SQLite, and runs with [uv](https://docs.astral.sh/uv/). It shows a table of quotes that you can sort, shuffle and filter. The web page only reads the database; nobody on the internet can write to it.
 
 Running example: https://sdscluster.uni-mannheim.de/user/mrobertson/nebari-app-example/
 
@@ -45,9 +45,17 @@ uv run main.py        # http://localhost:8000
 
 ## How it works
 
-1. `main.py` is the whole app. On startup it creates `data.db` next to itself and fills it with ten quotes if the table is empty.
-2. The buttons and column headers use HTMX, which comes with FastHTML. Each click fetches a new table from the server and swaps it into the page, so all sorting and shuffling happens in Python and SQL.
-3. Nebari starts the app with `uv run main.py {port}`, puts it behind a login proxy, and serves it under `/user/YOURUSER/APP-NAME/`.
+1. `main.py` is the whole app. On startup it creates the SQLite file `data.db` next to itself (in your home, e.g. `~/nebari-app-example/data.db`) and fills it with ten quotes if the table is empty. The file stays there between restarts. It is not committed to git.
+2. After startup the app opens the database read-only (`mode=ro`) and has no route that writes. To add or change rows, use a JupyterLab terminal:
+
+   ```bash
+   cd ~/nebari-app-example
+   python -c "import sqlite3; c = sqlite3.connect('data.db'); c.execute('insert into quotes (text, author, topic) values (?, ?, ?)', ('Hello', 'Me', 'demo')); c.commit()"
+   ```
+
+   Reload the page to see the row.
+3. The buttons and column headers use HTMX, which comes with FastHTML. Each click fetches a new table from the server and swaps it into the page, so all sorting and shuffling happens in Python and SQL.
+4. Nebari starts the app with `uv run main.py {port}`, puts it behind a login proxy, and serves it under `/user/YOURUSER/APP-NAME/`.
 
 ## Rules your app must follow on Nebari
 
@@ -58,7 +66,8 @@ Give this section to your coding agent.
 3. Manage packages with uv only: `uv add PACKAGE`, then `uv sync`. Do not use `pip install` or conda.
 4. Keep data in files inside your home directory, such as SQLite. The app pod and your JupyterLab server share the same home, so you can inspect `data.db` from JupyterLab while the app runs. Do not open the same SQLite file for writing from many processes at once.
 5. The app pod is separate from your JupyterLab server. Stopping JupyterLab does not stop the app.
-6. Never put secrets in the repository. Pass API keys as environment variables in the "Deploy App" form.
-7. Logs: if the app does not start, open it from the hub home page; the start-up log shows the Python error. The most common causes are a wrong path in the command, a missing `uv sync`, or a hard-coded port.
+6. A public app is open to the whole internet. Do not add forms or routes that write to your database or files unless the app checks who is logged in. Load and edit data from JupyterLab instead.
+7. Never put secrets in the repository. Pass API keys as environment variables in the "Deploy App" form.
+8. Logs: if the app does not start, open it from the hub home page; the start-up log shows the Python error. The most common causes are a wrong path in the command, a missing `uv sync`, or a hard-coded port.
 
 Background: Nebari apps are built on [jhub-apps](https://jhub-apps.nebari.dev/create-apps/general-app/). Streamlit, Gradio, Panel and the other frameworks in the form also work, but a custom command with uv runs any Python web app.

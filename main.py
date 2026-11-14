@@ -1,4 +1,4 @@
-"""A small FastHTML app that reads and writes an SQLite database.
+"""A small read-only FastHTML app on top of an SQLite database.
 
 Run locally:   uv run main.py           (then open http://localhost:8000)
 On Nebari:     uv run main.py {port}    (Nebari fills in the port)
@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 from fasthtml.common import (
-    A, Article, Button, Div, Form, Input, P, Small, Table, Tbody, Td, Th,
+    A, Article, Button, Div, P, Small, Table, Tbody, Td, Th,
     Thead, Titled, Tr, fast_app, serve,
 )
 
@@ -29,23 +29,26 @@ SEED = [
     ("Simple things should be simple, complex things should be possible.", "Alan Kay", "programming"),
 ]
 
+# The web app only reads. Visitors can come from the open internet, so it
+# offers no route that writes. Add rows from a JupyterLab terminal instead:
+#   python -c "import sqlite3; c = sqlite3.connect('data.db'); c.execute('insert into quotes (text, author, topic) values (?, ?, ?)', ('Hello', 'Me', 'demo')); c.commit()"
+
 # Columns the user may sort by, mapped to SQL. Never put user input into SQL directly.
 SORTS = {
     "author": "author, text",
     "topic": "topic, author",
     "length": "length(text)",
-    "newest": "id desc",
 }
 
 
-def db():
-    con = sqlite3.connect(DB)
+def db(readonly=True):
+    con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True) if readonly else sqlite3.connect(DB)
     con.row_factory = sqlite3.Row
     return con
 
 
 def setup():
-    with db() as con:
+    with db(readonly=False) as con:
         con.execute("create table if not exists quotes (id integer primary key, text text not null, author text not null, topic text not null)")
         if con.execute("select count(*) from quotes").fetchone()[0] == 0:
             con.executemany("insert into quotes (text, author, topic) values (?, ?, ?)", SEED)
@@ -86,20 +89,12 @@ def index():
         Button("Show all", hx_get="table", hx_target="#quotes", cls="outline"),
         style="display:flex; gap:0.5rem; flex-wrap:wrap",
     )
-    add = Form(
-        Input(name="text", placeholder="Quote", required=True),
-        Input(name="author", placeholder="Author", required=True),
-        Input(name="topic", placeholder="Topic", required=True),
-        Button("Add to database"),
-        hx_post="add", hx_target="#quotes", hx_on__after_request="this.reset()",
-    )
     return Titled(
         "Nebari app example",
         P("Quotes stored in SQLite. Click a column header to sort."),
         Article(Div(id="pick"), Button("Random quote", hx_get="random", hx_target="#pick")),
         buttons,
         table(quotes()),
-        add,
     )
 
 
@@ -126,12 +121,6 @@ def random_quote():
     r = random.choice(quotes())
     return Div(P(f"“{r['text']}”"), Small(f"— {r['author']}"), id="pick")
 
-
-@rt("/add")
-def post(text: str, author: str, topic: str):
-    with db() as con:
-        con.execute("insert into quotes (text, author, topic) values (?, ?, ?)", (text.strip(), author.strip(), topic.strip().lower()))
-    return table(quotes("newest"), "Added. Newest first.")
 
 
 if __name__ == "__main__":
