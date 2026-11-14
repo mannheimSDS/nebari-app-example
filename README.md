@@ -16,7 +16,7 @@ You need a cluster account. Every step runs in your browser.
    ```bash
    curl -LsSf https://astral.sh/uv/install.sh | sh   # installs uv into ~/.local/bin, once
    cd ~
-   git clone https://github.com/OWNER/nebari-app-example.git
+   git clone https://github.com/mannheimSDS/nebari-app-example.git
    cd nebari-app-example
    ~/.local/bin/uv sync                               # creates .venv with the packages
    ```
